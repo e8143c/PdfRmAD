@@ -5,9 +5,12 @@
 # @github  :
 #
 import argparse
-import sys
 import os
+# Todo 删除问文件的list做在一起，
 
+
+# search from root folder, remove the file  in the give list.
+# the list can be a single file give as a string.
 
 def rm_file_in_folder(folder_name, rm_file_list):
     if not os.path.exists(folder_name):
@@ -16,14 +19,15 @@ def rm_file_in_folder(folder_name, rm_file_list):
     os.chdir(folder_name)
     file_list = [os.path.join(folder_name, f) for f in os.listdir(path=folder_name) if os.path.isfile(f)]
     for file in file_list:
-        for rm_file in rm_file_list:
-            if rm_file_list in file:
+        for rm_file in list(rm_file_list):
+            # given file string(completely or partial) in the file
+            if rm_file in file:
                 os.remove(file)
     sub_dir_list = [os.path.join(folder_name, d) for d in os.listdir(path=folder_name) if os.path.isdir(d)]
     if len(sub_dir_list) > 0:
-        # print(os.getcwd())
         for subdir in sub_dir_list:
             rm_file_in_folder(subdir, rm_file_list)
+
 
 def is_chinese(string):
     """
@@ -38,8 +42,8 @@ def is_chinese(string):
     return False
 
 
+# 判断没有中文名字的文件夹，如果里面的文件有汉语MP4则将目录名称以文件名称命名
 def rename_folder_by_filename(root_dir):
-    # 判断没有中文名字的文件夹，如果里面的文件有汉语MP4则将目录名称以文件名称命名
     parent_path, folder = os.path.split(root_dir)
     new_name = folder
     mp4_list = [n for n in os.listdir(root_dir) if 'mp4' in n]
@@ -67,7 +71,7 @@ if __name__ == '__main__':
                         help='Remove all the same file from give dir by -d')
     parser.add_argument('-d', '--dir', nargs='?', metavar='RootDir', required=True,
                         help='the folder tree to operate')
-    parser.add_argument('-m', '--mix', nargs='+', metavar='operate', choices=['rnf'],
+    parser.add_argument('-m', '--mix', nargs='+', metavar='operate', choices=['rnf', 'rfl'],
                         help='multiple operates, can be extend by the option')
 
     args = vars(parser.parse_args())
@@ -80,7 +84,13 @@ if __name__ == '__main__':
     if filename:
         rm_file_in_folder(folder_path, filename)
 
+    # mix operate switch
     # rename folder if it is not identical with the mp3 in it.
+    # eg，-d F:\约约\小花 -m rnf
     if 'rnf' in mix_opt:
         rename_folder_by_filename(folder_path)
-    pass
+    # rfl-remove file from list; list is fix in function as a const list
+    elif 'rfl' in mix_opt:
+        valid_name = ['.htm']
+        rm_file_in_folder(folder_path, valid_name)
+        pass

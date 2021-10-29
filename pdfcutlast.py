@@ -5,9 +5,8 @@
 # @github  :
 # TODO: MP3的切片功能,界面,logging
 import argparse
-import sys
 import os
-from PyPDF2 import PdfFileMerger, PdfFileReader
+from PyPDF2 import PdfFileMerger, PdfFileReader, PdfFileWriter
 
 
 def page_is_ad(page_obj):
@@ -37,20 +36,66 @@ def arg_is_folder(path):
         return False
 
 
+def navi_and_del_ad_page(origin_name):
+    """
+        check the ad one by one and join a new PDF
+        :param origin_name: pdf file path
+        :return: None
+        """
+    if ' ' in origin_name:
+        os.rename(origin_name, origin_name.replace(' ', ''))
+        origin_name = origin_name.replace(' ', '')
+    origin_pdf = open(origin_name, 'rb')
+    # print align debug code, wid_gap is mean the gap between GBK output with ASII
+    # print("%d+%d" % (len(os.path.split(origin_name)[-1]), len(os.path.split(origin_name)[-1].encode('GBK'))))
+    try:
+        wid_gap = len(origin_name.encode('GBK')) - len(origin_name)
+    except UnicodeEncodeError:
+        wid_gap = len(origin_name)
+    try:
+        out_file = out_filename = origin_pdf.name[:-4] + "tmp.pdf"
+        pdf_file_writer = PdfFileWriter()
+        pdf_file_reader = PdfFileReader(origin_pdf)
+        page_count = pdf_file_reader.getNumPages()
+        for index in range(0, page_count):
+            page_obj = pdf_file_reader.getPage(index)
+            if not page_is_ad(page_obj):
+                pdf_file_writer.addPage(page_obj)
+            else:
+                print("Page %4d in Book: %s is AD page, SKIP!" % (
+                    index, os.path.split(origin_name)[-1].ljust(50 - wid_gap)))
+
+        tmp_pdf = open(out_file, 'wb')
+        pdf_file_writer.write(tmp_pdf)
+        tmp_pdf.close()
+        origin_pdf.close()
+        os.remove(origin_name)
+        os.rename(out_filename, origin_name)
+    except Exception as e:
+        print("ERROR！！！ while writing " + os.path.split(origin_name)[-1])
+        print(e)
+
+
 def cut_last_page(origin_name):
     """
     delete the last page if it is the AD of 调研君
     :param origin_name: pdf file path
     :return: None
     """
+    if ' ' in origin_name:
+        os.rename(origin_name, origin_name.replace(' ', ''))
+        origin_name = origin_name.replace(' ', '')
     origin_pdf = open(origin_name, 'rb')
     # print align debug code, wid_gap is mean the gap between GBK output with ASII
     # print("%d+%d" % (len(os.path.split(origin_name)[-1]), len(os.path.split(origin_name)[-1].encode('GBK'))))
-    wid_gap = len(origin_name.encode('GBK')) - len(origin_name)
     try:
-        pdf_input = PdfFileReader(origin_pdf)
+        wid_gap = len(origin_name.encode('GBK')) - len(origin_name)
+    except UnicodeEncodeError:
+        wid_gap = len(origin_name)
+    try:
+        pdf_input = PdfFileReader(origin_pdf, strict=False)
         if pdf_input.isEncrypted:
-            # pdf_input.decrypt('')
+            # pdf_input.decrypt(False)
             pass
         page_count = pdf_input.getNumPages()
     except Exception as e:
@@ -70,7 +115,10 @@ def cut_last_page(origin_name):
     if last_index:
         merger = PdfFileMerger()
         out_filename = origin_pdf.name[:-4] + "tmp.pdf"
-        merger.append(origin_pdf, pages=(0, last_index))
+        try:
+            merger.append(origin_pdf, pages=(0, last_index))
+        except KeyError:
+            wid_gap = len(origin_name)
         try:
             merger.write(out_filename)
             origin_pdf.close()
@@ -98,9 +146,10 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
 
     if arg_is_folder(args['workdir']):
-        list_pdf = [f for f in os.listdir(sys.argv[1]) if '.pdf' in f]
+        list_pdf = [f for f in os.listdir(args['workdir']) if '.pdf' in f]
         if len(list_pdf) > 0:
             for f in list_pdf:
-                cut_last_page(os.path.join(sys.argv[1], f))
+                navi_and_del_ad_page(os.path.join(args['workdir'], f))
         exit(0)
-    cut_last_page(args['workdir'])
+    # cut_last_page(args['workdir'])
+    navi_and_del_ad_page(args['workdir'])
