@@ -71,8 +71,12 @@ def navi_and_del_ad_page(origin_name):
         origin_pdf.close()
         os.remove(origin_name)
         os.rename(out_filename, origin_name)
+
     except Exception as e:
         print("ERROR！！！ while writing " + os.path.split(origin_name)[-1])
+        tmp_pdf.close()
+        origin_pdf.close()
+        os.remove(out_filename)
         print(e)
 
 
